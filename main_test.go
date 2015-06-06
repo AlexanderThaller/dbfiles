@@ -4,10 +4,35 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/juju/errgo"
 )
+
+const longvalue = `test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test
+  test test test test test test test test test test test test test test test`
 
 func tmp_db() (*DBFiles, error) {
 	db := New()
@@ -37,6 +62,8 @@ func Test_DBFiles_Put(t *testing.T) {
 	if err != nil {
 		t.Fatalf(errgo.Details(err))
 	}
+
+	db.Destroy()
 }
 
 func Test_DBFiles_PutMultiValue(t *testing.T) {
@@ -56,6 +83,37 @@ func Test_DBFiles_PutMultiValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf(errgo.Details(err))
 	}
+
+	db.Destroy()
+}
+
+func Test_DBFiles_PutParallel(t *testing.T) {
+	db, err := tmp_db()
+	if err != nil {
+		t.Fatalf(errgo.Details(err))
+	}
+
+	wg := new(sync.WaitGroup)
+
+	for i := 0; i != 100000; i++ {
+		wg.Add(1)
+
+		counter := i
+		go func() {
+			defer wg.Done()
+
+			value := longvalue + strconv.Itoa(counter)
+
+			err = db.Put([]string{value}, "PutParallel")
+			if err != nil {
+				t.Fatalf(errgo.Details(err))
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	db.Destroy()
 }
 
 func Test_DBFiles_Get(t *testing.T) {
@@ -86,6 +144,8 @@ func Test_DBFiles_Get(t *testing.T) {
 		t.Log("datadir:", db.BaseDir)
 		t.Fatalf("out is not equal to in")
 	}
+
+	db.Destroy()
 }
 
 func Test_Keys(t *testing.T) {
@@ -121,6 +181,8 @@ func Test_Keys(t *testing.T) {
 		t.Log("datadir:", db.BaseDir)
 		t.Fatalf("out is not equal to in")
 	}
+
+	db.Destroy()
 }
 
 func BenchmarkPut(b *testing.B) {
@@ -136,6 +198,8 @@ func BenchmarkPut(b *testing.B) {
 			b.Fatalf(errgo.Details(err))
 		}
 	}
+
+	db.Destroy()
 }
 
 func BenchmarkGet(b *testing.B) {
@@ -156,6 +220,8 @@ func BenchmarkGet(b *testing.B) {
 			b.Fatalf(errgo.Details(err))
 		}
 	}
+
+	db.Destroy()
 }
 
 func BenchmarkKeys(b *testing.B) {
@@ -176,4 +242,6 @@ func BenchmarkKeys(b *testing.B) {
 			b.Fatalf(errgo.Details(err))
 		}
 	}
+
+	db.Destroy()
 }

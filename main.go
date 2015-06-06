@@ -53,6 +53,8 @@ func (db DBFiles) Put(values []string, key ...string) error {
 		return errgo.Notef(err, "can not write values")
 	}
 
+	file.Close()
+
 	return nil
 }
 
@@ -104,6 +106,15 @@ func (db *DBFiles) walkPopulateKeys(path string, info os.FileInfo, err error) er
 	db.keysmux.Lock()
 	db.keys = append(db.keys, split)
 	db.keysmux.Unlock()
+
+	return nil
+}
+
+func (db *DBFiles) Destroy() error {
+	err := os.RemoveAll(db.BaseDir)
+	if err != nil {
+		return errgo.Notef(err, "can not remove basedir")
+	}
 
 	return nil
 }
