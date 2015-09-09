@@ -1,8 +1,9 @@
 package dbfiles
 
 import (
-	"encoding/csv"
 	"io"
+
+	"github.com/AlexanderThaller/dbfiles/csv"
 
 	"github.com/juju/errgo"
 )
@@ -33,20 +34,13 @@ func (driver CSV) Write(writer io.Writer, values []string) error {
 
 func (driver CSV) Read(reader io.Reader) ([][]string, error) {
 	csvreader := csv.NewReader(reader)
+	csvreader.VariableFieldsPerRecord = true
 
 	var values [][]string
 
-	for {
-		value, err := csvreader.Read()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-
-			return nil, errgo.Notef(err, "can not read value")
-		}
-
-		values = append(values, value)
+	values, err := csvreader.ReadAll()
+	if err != nil {
+		return nil, errgo.Notef(err, "can not read all records from file")
 	}
 
 	return values, nil
