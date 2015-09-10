@@ -123,7 +123,9 @@ func Test_DBFiles_Get(t *testing.T) {
 	}
 
 	in := [][]string{
+		[]string{"test", "test"},
 		[]string{"test"},
+		[]string{"test", "test"},
 	}
 
 	for _, value := range in {
