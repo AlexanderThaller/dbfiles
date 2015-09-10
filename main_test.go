@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/juju/errgo"
 )
@@ -103,6 +104,8 @@ func Test_DBFiles_PutParallel(t *testing.T) {
 			defer wg.Done()
 
 			value := longvalue + strconv.Itoa(counter)
+
+			time.Sleep(100 * time.Millisecond)
 
 			err = db.Put([]string{value}, "PutParallel")
 			if err != nil {

@@ -5,6 +5,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/juju/errgo"
 )
@@ -35,9 +36,21 @@ func (str Folders) File(basedir string, driver Driver, key []string) (*os.File, 
 		return nil, errgo.Notef(err, "can not create keypath")
 	}
 
-	file, err := os.OpenFile(keypath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0640)
-	if err != nil {
-		return nil, errgo.Notef(err, "can not open file")
+	var file *os.File
+	counter := 10
+	for {
+		file, err = os.OpenFile(keypath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0640)
+		if err != nil {
+			if counter != 0 {
+				counter--
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
+			return nil, errgo.Notef(err, "can not open file")
+		}
+
+		break
 	}
 
 	return file, nil

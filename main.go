@@ -37,9 +37,12 @@ func New() *DBFiles {
 }
 
 func (db DBFiles) Put(values []string, key ...string) error {
-	err := db.Structure.Create(db.BaseDir)
-	if err != nil {
-		return errgo.Notef(err, "can not create structure")
+	_, err := os.Stat(db.BaseDir)
+	if os.IsNotExist(err) {
+		err := db.Structure.Create(db.BaseDir)
+		if err != nil {
+			return errgo.Notef(err, "can not create structure")
+		}
 	}
 
 	file, err := db.Structure.File(db.BaseDir, db.Driver, key)
@@ -52,8 +55,6 @@ func (db DBFiles) Put(values []string, key ...string) error {
 	if err != nil {
 		return errgo.Notef(err, "can not write values")
 	}
-
-	file.Close()
 
 	return nil
 }
