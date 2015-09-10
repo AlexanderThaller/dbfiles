@@ -74,7 +74,12 @@ func (db DBFiles) Get(key ...string) ([][]string, error) {
 }
 
 func (db DBFiles) Keys() ([][]string, error) {
-	err := filepath.Walk(db.BaseDir, db.walkPopulateKeys)
+	_, err := os.Stat(db.BaseDir)
+	if os.IsNotExist(err) {
+		return [][]string{}, nil
+	}
+
+	err = filepath.Walk(db.BaseDir, db.walkPopulateKeys)
 	if err != nil {
 		return nil, errgo.Notef(err, "can not walk through basedir")
 	}
@@ -83,6 +88,14 @@ func (db DBFiles) Keys() ([][]string, error) {
 }
 
 func (db *DBFiles) walkPopulateKeys(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return errgo.Notef(err, "error is not empty")
+	}
+
+	if info == nil {
+		return errgo.New("directory info is empty")
+	}
+
 	if info.IsDir() {
 		return nil
 	}
