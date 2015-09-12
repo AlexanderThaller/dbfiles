@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/juju/errgo"
 )
@@ -103,11 +102,23 @@ func Test_DBFiles_PutParallel(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			value := longvalue + strconv.Itoa(counter)
+			value := strconv.Itoa(counter)
+			key := "PutParallel"
 
-			time.Sleep(100 * time.Millisecond)
+			errorChan := make(chan (error))
 
-			err = db.Put([]string{value}, "PutParallel")
+			rec := record{
+				values:    []string{value},
+				key:       []string{key},
+				errorChan: errorChan,
+				basedir:   db.BaseDir,
+			}
+
+			db.WriteQueue <- rec
+
+			err := <-errorChan
+
+			//err = db.Put([]string{value}, key)
 			if err != nil {
 				t.Fatalf(errgo.Details(err))
 			}
@@ -116,7 +127,7 @@ func Test_DBFiles_PutParallel(t *testing.T) {
 
 	wg.Wait()
 
-	db.Destroy()
+	//db.Destroy()
 }
 
 func Test_DBFiles_Get(t *testing.T) {
