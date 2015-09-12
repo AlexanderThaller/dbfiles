@@ -19,9 +19,10 @@ type DBFiles struct {
 	BaseDir string
 	Driver
 	Structure
-	keys       [][]string
-	keysmux    *sync.RWMutex
 	WriteQueue chan (record)
+
+	keysmux *sync.RWMutex
+	keys    [][]string
 }
 
 type record struct {
@@ -38,8 +39,9 @@ func New() *DBFiles {
 	db.BaseDir = DefaultBaseDir
 	db.Driver = CSV{}
 	db.Structure = NewFolders()
-	db.keysmux = new(sync.RWMutex)
+
 	db.WriteQueue = make(chan (record), 10000)
+	db.keysmux = new(sync.RWMutex)
 
 	go db.runQueue()
 	go db.runQueue()
@@ -140,6 +142,11 @@ func (db *DBFiles) walkPopulateKeys(path string, info os.FileInfo, err error) er
 
 	if info == nil {
 		return errgo.New("directory info is empty")
+	}
+
+	//Skip git folder
+	if info.IsDir() && info.Name() == ".git" {
+		return filepath.SkipDir
 	}
 
 	if info.IsDir() {
