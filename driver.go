@@ -23,11 +23,10 @@ func (driver CSV) Extention() string {
 func (driver CSV) Write(writer io.Writer, values []string) error {
 	csvwriter := csv.NewWriter(writer)
 
-	err := csvwriter.Write(values)
+	err := csvwriter.WriteAll([][]string{values})
 	if err != nil {
 		return errgo.Notef(err, "can not write to csv writer")
 	}
-	csvwriter.Flush()
 
 	return nil
 }

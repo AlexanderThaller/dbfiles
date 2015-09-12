@@ -88,6 +88,11 @@ func Test_DBFiles_PutMultiValue(t *testing.T) {
 }
 
 func Test_DBFiles_PutParallel(t *testing.T) {
+	numberParallel := 100000
+	if testing.Short() {
+		numberParallel = 1000
+	}
+
 	db, err := tmp_db()
 	if err != nil {
 		t.Fatalf(errgo.Details(err))
@@ -95,7 +100,7 @@ func Test_DBFiles_PutParallel(t *testing.T) {
 
 	wg := new(sync.WaitGroup)
 
-	for i := 0; i != 100000; i++ {
+	for i := 0; i != numberParallel; i++ {
 		wg.Add(1)
 
 		counter := i
@@ -199,6 +204,63 @@ func Test_Keys(t *testing.T) {
 	}
 
 	db.Destroy()
+}
+
+func Test_DBFiles_PutNewFolder(t *testing.T) {
+	db := New()
+
+	tmpdir, err := ioutil.TempDir("/tmp/", "PutNewFolderTest")
+	if err != nil {
+		t.Fatal(errgo.Notef(err, "can not open tmpdir"))
+	}
+	db.BaseDir = tmpdir + "/NewFolder"
+
+	value := "NoValue"
+	key := "PutNewFolder"
+
+	errorChan := make(chan (error))
+
+	rec := record{
+		values:    []string{value},
+		key:       []string{key},
+		errorChan: errorChan,
+		basedir:   db.BaseDir,
+	}
+
+	db.WriteQueue <- rec
+
+	err = <-errorChan
+	if err != nil {
+		t.Fatalf(errgo.Details(err))
+	}
+
+	db.Destroy()
+}
+
+func Test_DBFiles_PutNewFolder_Fail(t *testing.T) {
+	db := New()
+
+	db.BaseDir = "/fail/fail/fail/fail/fail"
+
+	value := "NoValue"
+	key := "PutNewFolder"
+
+	errorChan := make(chan (error))
+
+	rec := record{
+		values:    []string{value},
+		key:       []string{key},
+		errorChan: errorChan,
+		basedir:   db.BaseDir,
+	}
+
+	db.WriteQueue <- rec
+
+	err := <-errorChan
+	if err == nil {
+		t.Logf("err: ", err)
+		t.Fatal("error should not be nil")
+	}
 }
 
 func BenchmarkPut(b *testing.B) {
