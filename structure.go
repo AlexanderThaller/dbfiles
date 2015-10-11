@@ -77,6 +77,65 @@ func (str Folders) newOrExistingFileLock(path string) (io.ReadWriteCloser, error
 	return file, nil
 }
 
+func NewFlat() Flat {
+	return Flat{
+		filesMux: new(sync.RWMutex),
+		files:    make(map[string]*FileLock),
+	}
+}
+
+type Flat struct {
+	files    map[string]*FileLock
+	filesMux *sync.RWMutex
+}
+
+func (str Flat) Create(basedir string) error {
+	err := os.MkdirAll(basedir, 0755)
+	if err != nil {
+		return errgo.Notef(err, "can not create basedir")
+	}
+
+	return nil
+}
+
+func (str Flat) File(basedir string, driver Driver, key []string) (io.ReadWriteCloser, error) {
+	keypath := path.Join(basedir, strings.Join(key, ".")) + "." + driver.Extention()
+
+	folderpath := filepath.Dir(keypath)
+
+	err := os.MkdirAll(folderpath, 0755)
+	if err != nil {
+		return nil, errgo.Notef(err, "can not create keypath")
+	}
+
+	return str.newOrExistingFileLock(keypath)
+}
+
+func (str Flat) newOrExistingFileLock(path string) (io.ReadWriteCloser, error) {
+	log.Debug("checking file ", path)
+
+	str.filesMux.RLock()
+	file, exists := str.files[path]
+	str.filesMux.RUnlock()
+
+	if exists {
+		log.Debug("already open ", path)
+		return file, nil
+	}
+
+	log.Debug("open new file ", path)
+	str.filesMux.Lock()
+	file, err := NewFileLock(path)
+	if err != nil {
+		return nil, errgo.Notef(err, "can not open file for this path")
+	}
+
+	str.files[path] = file
+	str.filesMux.Unlock()
+
+	return file, nil
+}
+
 type FileLock struct {
 	mutex *sync.RWMutex
 	file  *os.File
@@ -114,13 +173,17 @@ func (fileLock *FileLock) Close() error {
 	return nil
 }
 
-func (fileLock *FileLock) Read(p []byte) (n int, err error) {
+func (fileLock *FileLock) Read(p []byte) (int, error) {
 	log.Debug("Running read")
 	log.Debug("File: ", &fileLock.file)
 
 	fileLock.mutex.RLock()
 	fileLock.file.Seek(0, 0)
-	n, err = fileLock.file.Read(p)
+	n, err := fileLock.file.Read(p)
+	if err != nil {
+		fileLock.mutex.RUnlock()
+		return 0, errgo.Notef(err, "can not read from file")
+	}
 	fileLock.file.Seek(2, 0)
 	err = io.EOF
 	fileLock.mutex.RUnlock()
@@ -129,7 +192,7 @@ func (fileLock *FileLock) Read(p []byte) (n int, err error) {
 	log.Debug("Error: ", err)
 	log.Debug("Data: ", string(p))
 
-	return
+	return n, err
 }
 
 func (fileLock *FileLock) Write(p []byte) (n int, err error) {
