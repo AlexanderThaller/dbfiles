@@ -43,68 +43,41 @@ func New() *DBFiles {
 	db.WriteQueue = make(chan (record), 10000)
 	db.keysmux = new(sync.RWMutex)
 
-	go db.runQueue()
-	go db.runQueue()
-	go db.runQueue()
-	go db.runQueue()
-	go db.runQueue()
-	go db.runQueue()
-	go db.runQueue()
-
 	return db
 }
 
-func (db DBFiles) runQueue() {
-	for {
-		record := <-db.WriteQueue
-		log.Debug("new record: ", record)
-		log.Debug("Basedir: ", record.basedir)
-
-		_, err := os.Stat(record.basedir)
-		if os.IsNotExist(err) {
-			err := db.Structure.Create(record.basedir)
-			if err != nil {
-				record.errorChan <- errgo.Notef(err, "can not create structure")
-				continue
-			}
-		}
-
-		file, err := db.Structure.File(record.basedir, db.Driver, record.key)
-		if err != nil {
-			record.errorChan <- errgo.Notef(err, "can not open file")
-			continue
-		}
-
-		err = db.Driver.Write(file, record.values)
-		if err != nil {
-			record.errorChan <- errgo.Notef(err, "can not write values")
-			continue
-		}
-
-		var data []byte
-		io.ReadFull(file, data)
-		log.Debug("Data: ", string(data))
-
-		record.errorChan <- nil
-		log.Debug("finished writing record: ", record)
-
-		file.Close()
-	}
-}
-
 func (db *DBFiles) Put(values []string, key ...string) error {
-	errorChan := make(chan (error))
-
-	rec := record{
-		values:    values,
-		key:       key,
-		errorChan: errorChan,
-		basedir:   db.BaseDir,
+	record := record{
+		values:  values,
+		key:     key,
+		basedir: db.BaseDir,
 	}
 
-	db.WriteQueue <- rec
+	_, err := os.Stat(record.basedir)
+	if os.IsNotExist(err) {
+		err := db.Structure.Create(record.basedir)
+		if err != nil {
+			return errgo.Notef(err, "can not create structure")
 
-	err := <-errorChan
+		}
+	}
+
+	file, err := db.Structure.File(record.basedir, db.Driver, record.key)
+	if err != nil {
+		return errgo.Notef(err, "can not open file")
+	}
+	defer file.Close()
+
+	err = db.Driver.Write(file, record.values)
+	if err != nil {
+		return errgo.Notef(err, "can not write values")
+	}
+
+	var data []byte
+	io.ReadFull(file, data)
+	log.Debug("Data: ", string(data))
+
+	log.Debug("finished writing record: ", record)
 
 	return err
 }
@@ -165,7 +138,7 @@ func (db *DBFiles) walkPopulateKeys(path string, info os.FileInfo, err error) er
 	driverext := filepath.Ext(relpath)
 
 	// remove driverextention
-	nodriverpath := strings.TrimRight(relpath, driverext)
+	nodriverpath := relpath[0 : len(relpath)-len(driverext)]
 
 	// Split by path sepperator
 	split := strings.Split(nodriverpath, string(os.PathSeparator))
@@ -174,6 +147,11 @@ func (db *DBFiles) walkPopulateKeys(path string, info os.FileInfo, err error) er
 	db.keysmux.Lock()
 	db.keys = append(db.keys, split)
 	db.keysmux.Unlock()
+
+	log.Debug("Path: ", path)
+	log.Debug("driverext: ", driverext)
+	log.Debug("Nodriverpath: ", nodriverpath)
+	log.Debug("Split: ", split)
 
 	return nil
 }
