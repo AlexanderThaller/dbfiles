@@ -87,6 +87,8 @@ func (db DBFiles) runQueue() {
 
 		record.errorChan <- nil
 		log.Debug("finished writing record: ", record)
+
+		file.Close()
 	}
 }
 
