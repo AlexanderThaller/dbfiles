@@ -1,0 +1,12 @@
+hash: 92024ee5cda3aa22ce9bcaf667c78f41d2622ede4a53c701436be7a641420b48
+updated: 2016-03-18T19:44:53.392230821+01:00
+imports:
+- name: github.com/juju/errgo
+  version: 08cceb5d0b5331634b9826762a8fd53b29b86ad8
+- name: github.com/Sirupsen/logrus
+  version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
+- name: golang.org/x/sys
+  version: 9d4e42a20653790449273b3c85e67d6d8bae6e2e
+  subpackages:
+  - unix
+devImports: []

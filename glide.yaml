@@ -1,0 +1,4 @@
+package: github.com/AlexanderThaller/dbfiles
+import:
+- package: github.com/Sirupsen/logrus
+- package: github.com/juju/errgo
