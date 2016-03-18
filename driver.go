@@ -1,9 +1,8 @@
 package dbfiles
 
 import (
+	"encoding/csv"
 	"io"
-
-	"github.com/AlexanderThaller/dbfiles/csv"
 
 	"github.com/juju/errgo"
 )
@@ -33,7 +32,7 @@ func (driver CSV) Write(writer io.Writer, values []string) error {
 
 func (driver CSV) Read(reader io.Reader) ([][]string, error) {
 	csvreader := csv.NewReader(reader)
-	csvreader.VariableFieldsPerRecord = true
+	csvreader.FieldsPerRecord = -1
 
 	var values [][]string
 
