@@ -102,7 +102,12 @@ func (db DBFiles) Keys() ([][]string, error) {
 		return [][]string{}, nil
 	}
 
-	err = filepath.Walk(db.BaseDir, db.walkPopulateKeys)
+	realpath, err := filepath.EvalSymlinks(db.BaseDir)
+	if err != nil {
+		log.Fatal(errgo.Notef(err, "can not evaluate grains folder symlink"))
+	}
+
+	err = filepath.Walk(realpath, db.walkPopulateKeys)
 	if err != nil {
 		return nil, errgo.Notef(err, "can not walk through basedir")
 	}
